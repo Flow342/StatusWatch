@@ -1,0 +1,68 @@
+@import 'tailwindcss';
+
+/* Design tokens for the dark status-page theme. */
+@theme {
+  --color-canvas: oklch(0.16 0.012 260);
+  --color-surface: oklch(0.21 0.014 260);
+  --color-surface-hover: oklch(0.25 0.016 260);
+  --color-line: oklch(0.31 0.016 260);
+  --color-ink: oklch(0.96 0.004 260);
+  --color-ink-muted: oklch(0.71 0.014 260);
+  --color-ink-faint: oklch(0.56 0.014 260);
+
+  --color-up: oklch(0.75 0.17 150);
+  --color-down: oklch(0.66 0.2 25);
+  --color-degraded: oklch(0.81 0.16 85);
+  --color-unknown: oklch(0.52 0.01 260);
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-canvas text-ink antialiased;
+    font-family:
+      ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  /* Tabular figures keep percentages and latencies from jittering as they refresh. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Registered as a utility (not a plain component class) so the button variants below
+   can @apply it — Tailwind v4 only resolves real utilities inside @apply. */
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium
+         transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-line bg-surface;
+  }
+
+  .btn-primary {
+    @apply btn bg-up/90 text-canvas hover:bg-up;
+  }
+
+  .btn-secondary {
+    @apply btn border border-line bg-surface text-ink hover:bg-surface-hover;
+  }
+
+  .btn-danger {
+    @apply btn border border-down/40 text-down hover:bg-down/10;
+  }
+
+  .input {
+    @apply w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink
+           placeholder:text-ink-faint focus:border-up/60 focus:outline-none focus:ring-1 focus:ring-up/40;
+  }
+
+  .label {
+    @apply mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted;
+  }
+}

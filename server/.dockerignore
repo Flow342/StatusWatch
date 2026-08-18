@@ -1,0 +1,25 @@
+# Ignore local environment files and secrets
+.env
+*.pem
+credentials.json
+
+# Ignore package manager and dependency folders
+node_modules/
+venv/
+.pnpm-store/
+
+# Ignore local build outputs and caches
+dist/
+build/
+.cache/
+*.log
+
+# Ignore IDE settings and system junk
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Ignore version control systems
+.git
+.gitignore

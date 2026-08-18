@@ -1,0 +1,18 @@
+node_modules/
+dist/
+build/
+
+# Environment files — never commit real secrets. Keep the .env.example files.
+.env
+.env.*
+!.env.example
+client/.env
+server/.env
+
+npm-debug.log*
+yarn-error.log*
+*.log
+
+.DS_Store
+.idea/
+.vscode/
