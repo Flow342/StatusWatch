@@ -70,7 +70,7 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Tag and push backend image
+      - name: Tag and push frontend image
         run: |
           docker tag status-backend ${{ steps.login-ecr.outputs.registry }}/status-watch/frontend
           docker push ${{ steps.login-ecr.outputs.registry }}/status-watch/frontend
