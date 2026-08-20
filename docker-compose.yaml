@@ -1,0 +1,38 @@
+services:
+  status-db:
+    image: postgres:16
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U statuswatch"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  status-backend:
+    build: ./server
+    env_file:
+      - ./server/.env
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4000/api/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    depends_on:
+      status-db:
+        condition: service_healthy
+    ports:
+      - "4000:4000"
+
+  status-frontend:
+    build: ./client
+    env_file:
+      - ./client/.env
+    depends_on:
+      status-backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+
+volumes:
+  dbdata:

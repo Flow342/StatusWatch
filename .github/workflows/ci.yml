@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build-backend:
     runs-on: ubuntu-latest
@@ -23,6 +27,21 @@ jobs:
       - name: Build backend image
         run: docker build -t status-backend ./server
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::841702866884:role/github-actions-ecr-push-role
+          aws-region: eu-north-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Tag and push backend image
+        run: |
+          docker tag status-backend ${{ steps.login-ecr.outputs.registry }}/841702866884.dkr.ecr.eu-north-1.amazonaws.com/status-watch/backend:latest
+          docker push ${{ steps.login-ecr.outputs.registry }}/841702866884.dkr.ecr.eu-north-1.amazonaws.com/status-watch/backend:latest
+
   build-frontend:
     runs-on: ubuntu-latest
     steps:
@@ -38,3 +57,18 @@ jobs:
         run: npm test
       - name: Build frontend image
         run: docker build -t status-frontend ./client
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::841702866884:role/github-actions-ecr-push-role
+          aws-region: eu-north-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Tag and push backend image
+        run: |
+          docker tag status-backend ${{ steps.login-ecr.outputs.registry }}/841702866884.dkr.ecr.eu-north-1.amazonaws.com/status-watch/frontend
+          docker push ${{ steps.login-ecr.outputs.registry }}/841702866884.dkr.ecr.eu-north-1.amazonaws.com/status-watch/frontend
