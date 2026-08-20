@@ -72,5 +72,5 @@ jobs:
 
       - name: Tag and push frontend image
         run: |
-          docker tag status-backend ${{ steps.login-ecr.outputs.registry }}/status-watch/frontend
+          docker tag status-frontend ${{ steps.login-ecr.outputs.registry }}/status-watch/frontend
           docker push ${{ steps.login-ecr.outputs.registry }}/status-watch/frontend
