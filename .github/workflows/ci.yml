@@ -32,6 +32,7 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::841702866884:role/github-actions-ecr-push-role
           aws-region: eu-north-1
+          role-skip-session-tagging: true
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -39,8 +40,8 @@ jobs:
 
       - name: Tag and push backend image
         run: |
-          docker tag status-backend ${{ steps.login-ecr.outputs.registry }}/841702866884.dkr.ecr.eu-north-1.amazonaws.com/status-watch/backend:latest
-          docker push ${{ steps.login-ecr.outputs.registry }}/841702866884.dkr.ecr.eu-north-1.amazonaws.com/status-watch/backend:latest
+          docker tag status-backend ${{ steps.login-ecr.outputs.registry }}/status-watch/backend:latest
+          docker push ${{ steps.login-ecr.outputs.registry }}/status-watch/backend:latest
 
   build-frontend:
     runs-on: ubuntu-latest
@@ -63,6 +64,7 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::841702866884:role/github-actions-ecr-push-role
           aws-region: eu-north-1
+          role-skip-session-tagging: true
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -70,5 +72,5 @@ jobs:
 
       - name: Tag and push backend image
         run: |
-          docker tag status-backend ${{ steps.login-ecr.outputs.registry }}/841702866884.dkr.ecr.eu-north-1.amazonaws.com/status-watch/frontend
-          docker push ${{ steps.login-ecr.outputs.registry }}/841702866884.dkr.ecr.eu-north-1.amazonaws.com/status-watch/frontend
+          docker tag status-backend ${{ steps.login-ecr.outputs.registry }}/status-watch/frontend
+          docker push ${{ steps.login-ecr.outputs.registry }}/status-watch/frontend
