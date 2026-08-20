@@ -10,7 +10,7 @@ services:
       retries: 5
 
   status-backend:
-    build: ./server
+    image: 841702866884.dkr.ecr.eu-north-1.amazonaws.com/status-watch/backend
     env_file:
       - ./server/.env
     healthcheck:
@@ -25,9 +25,7 @@ services:
       - "4000:4000"
 
   status-frontend:
-    build: ./client
-    env_file:
-      - ./client/.env
+    image: 841702866884.dkr.ecr.eu-north-1.amazonaws.com/status-watch/frontend
     depends_on:
       status-backend:
         condition: service_healthy
