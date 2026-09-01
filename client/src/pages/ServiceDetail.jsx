@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import api from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
 import useApiResource from '../lib/useApiResource.js';
@@ -79,7 +79,10 @@ function IncidentTable({ incidents }) {
 export function ServiceDetail() {
   const { id } = useParams();
   const { isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   // One loader keeps the three requests in sync with a single refresh cycle.
   const loader = useCallback(
@@ -102,6 +105,21 @@ export function ServiceDetail() {
   );
 
   const { data, error, loading, refresh } = useApiResource(loader, { intervalMs: REFRESH_MS });
+
+  async function handleDelete() {
+    if (!window.confirm(`Delete "${data.service.name}" and all of its check history?`)) return;
+
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await api.deleteService(id);
+      // The service no longer exists, so this page would 404 — go back to the list.
+      navigate('/', { replace: true });
+    } catch (err) {
+      setDeleteError(err.message);
+      setDeleting(false);
+    }
+  }
 
   async function handleCheckNow() {
     setBusy(true);
@@ -159,11 +177,32 @@ export function ServiceDetail() {
           </div>
 
           {isAdmin && (
-            <button type="button" className="btn-secondary" onClick={handleCheckNow} disabled={busy}>
-              {busy ? 'Checking…' : 'Check now'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={handleCheckNow}
+                disabled={busy || deleting}
+              >
+                {busy ? 'Checking…' : 'Check now'}
+              </button>
+              <button
+                type="button"
+                className="btn-danger"
+                onClick={handleDelete}
+                disabled={busy || deleting}
+              >
+                {deleting ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
           )}
         </div>
+
+        {deleteError && (
+          <p className="mt-3 rounded-lg border border-down/40 bg-down/10 px-3 py-2 text-sm text-down">
+            {deleteError}
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
