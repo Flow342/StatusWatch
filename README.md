@@ -197,6 +197,107 @@ in at **build** time, not read at runtime.
 
 ---
 
+## Test environment
+
+`docker-compose.test.yml` is an ephemeral stand for the automated tests, which live
+in a separate repository and run in GitHub Actions. It is deliberately separate from
+the production `docker-compose.yaml`: the stand needs throwaway data, fixed
+credentials and non-clashing ports, none of which belong in production.
+
+### Bringing it up locally
+
+```bash
+scripts/test-env-up.sh
+```
+
+That pulls the images, waits until every service reports healthy, applies the schema
+and loads the fixture, then prints:
+
+```
+  Backend  http://localhost:14000
+  API      http://localhost:14000/api
+  Frontend http://localhost:18080
+
+  Admin login: admin / test-password
+```
+
+Tear it down with:
+
+```bash
+scripts/test-env-down.sh
+```
+
+which removes the containers, volumes and network, so the next run starts clean.
+
+The images come from a private ECR repository, so authenticate first:
+
+```bash
+aws ecr get-login-password --region eu-north-1 | docker login --username AWS --password-stdin 841702866884.dkr.ecr.eu-north-1.amazonaws.com
+```
+
+### Variables
+
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `BACKEND_TAG` | `latest` | Tag of the backend image. Point it at a specific build to test that exact artefact. |
+| `FRONTEND_TAG` | `latest` | Same for the frontend image. |
+| `BACKEND_PORT` | `14000` | Host port for the API. High by default so the stand can run beside a dev stack on 4000. |
+| `FRONTEND_PORT` | `18080` | Host port for the dashboard. |
+| `WAIT_TIMEOUT` | `180` | Seconds `test-env-up.sh` waits for health before giving up and dumping logs. |
+| `SKIP_SEED` | unset | `SKIP_SEED=1` applies the schema but loads no fixture — for tests that create their own data. |
+
+In CI, pin the tags to the build under test rather than relying on `latest`:
+
+```bash
+BACKEND_TAG="$GITHUB_SHA" FRONTEND_TAG="$GITHUB_SHA" scripts/test-env-up.sh
+```
+
+### How the stand differs from production
+
+* **The database is throwaway.** No named volume; the data directory is a tmpfs, so
+  every teardown wipes it and no run can depend on a previous one.
+* **The scheduler is off** (`SCHEDULER_ENABLED=false`). A live scheduler would keep
+  probing the seeded URLs and writing new checks, so uptime percentages would drift
+  while tests asserted on them.
+* **Credentials are fixed and non-secret**, inline in the compose file. There is no
+  `env_file`, so the stand does not need `server/.env` to exist on the CI runner.
+
+### The fixture
+
+`scripts/test-seed.sql` truncates and reloads, so ids are stable across runs. It
+covers each state the API can report:
+
+| id | Name | Uptime (24h/7d/30d) | Avg response | Incidents |
+| --- | --- | --- | --- | --- |
+| 1 | Always Up | 100% | 100ms | none |
+| 2 | Always Down | 0% | `null` | 1 ongoing, 5 failed checks |
+| 3 | Flaky | 80% | 200ms | 2 resolved, 600s each |
+| 4 | No Checks Yet | `null` (status `unknown`) | `null` | none |
+
+All rows fall within the last two hours, so all three windows report the same
+figures. Schema changes are applied by the application's own `npm run migrate`
+inside the backend container, so the stand can never drift from what the app expects.
+
+Re-seed a running stand without restarting it:
+
+```bash
+scripts/seed-test-data.sh
+```
+
+### Pointing the tests at another stand
+
+The test repository should take the two base URLs from the environment rather than
+hardcoding them, e.g. `BASE_URL` and `API_URL`. Locally they are the URLs printed
+above; against a shared or deployed stand, pass that host instead:
+
+```bash
+API_URL=https://status-staging.example.com/api BASE_URL=https://status-staging.example.com npm test
+```
+
+Nothing in the stand is required for that — the tests only need to reach the two
+URLs. Note that a stand you did not start with these scripts will not have the
+fixture loaded, and its admin password will differ.
+
 ## Troubleshooting
 
 **`[migrate] failed: connect ECONNREFUSED`** — PostgreSQL isn't running (or isn't
