@@ -1,0 +1,90 @@
+# ---------------------------------------------------------------------------
+# Ephemeral StatusWatch stand for automated tests.
+#
+# Differences from the production docker-compose.yaml:
+#   * image tags are parameterised (BACKEND_TAG / FRONTEND_TAG, default "latest");
+#   * the database is throwaway — no named volume, data lives in tmpfs;
+#   * all environment values are inline, non-secret test values (no env_file);
+#   * published on high ports so it can run next to a dev stack;
+#   * the scheduler is off, so seeded data stays predictable.
+#
+# Bring it up with scripts/test-env-up.sh, which also waits for health and seeds.
+# ---------------------------------------------------------------------------
+
+name: statuswatch-test
+
+services:
+  status-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: statuswatch
+      POSTGRES_PASSWORD: statuswatch
+      POSTGRES_DB: statuswatch_test
+      # Silence the initdb fsync warning; durability is pointless on tmpfs.
+      POSTGRES_INITDB_ARGS: --nosync
+    # No volume: the data directory is a RAM disk, so every `down` starts clean.
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U statuswatch -d statuswatch_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  status-backend:
+    image: 841702866884.dkr.ecr.eu-north-1.amazonaws.com/status-watch/backend:${BACKEND_TAG:-latest}
+    environment:
+      NODE_ENV: development
+      PORT: "4000"
+      HOST: 0.0.0.0
+      # Tests drive the API from the host and from the browser; allow any origin.
+      CORS_ORIGIN: "*"
+
+      PGHOST: status-db
+      PGPORT: "5432"
+      PGDATABASE: statuswatch_test
+      PGUSER: statuswatch
+      PGPASSWORD: statuswatch
+      PGSSL: "false"
+      PG_POOL_MAX: "10"
+
+      # Fixed, non-secret test credentials — tests log in with these.
+      JWT_SECRET: test-jwt-secret-not-a-real-key
+      JWT_EXPIRES_IN: 12h
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: test-password
+
+      # Off on purpose: a running scheduler would keep inserting checks and make
+      # the seeded uptime figures drift under the tests' feet.
+      SCHEDULER_ENABLED: "false"
+      CHECK_TIMEOUT_MS: "5000"
+      CHECK_CONCURRENCY: "2"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4000/api/health || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    depends_on:
+      status-db:
+        condition: service_healthy
+    ports:
+      - "${BACKEND_PORT:-14000}:4000"
+
+  status-frontend:
+    image: 841702866884.dkr.ecr.eu-north-1.amazonaws.com/status-watch/frontend:${FRONTEND_TAG:-latest}
+    # wget comes from busybox in nginx:alpine, so this needs nothing extra installed.
+    # 127.0.0.1, not localhost: nginx listens on IPv4 only, localhost resolves to ::1
+    # first inside the container, and busybox wget does not fall back to IPv4.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 3s
+    depends_on:
+      status-backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-18080}:80"
